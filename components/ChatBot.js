@@ -449,10 +449,10 @@ const LearnovaChatbot = () => {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 ${
+      className={`fixed bottom-6 sm:right-6 sm:mx-0 mx-auto z-50 ${
         themeClasses.container
       } rounded-xl shadow-2xl transition-all duration-300 ${
-        isMinimized ? "w-80 h-16" : "w-96 h-[660px]"
+        isMinimized ? "w-72 h-16" : "w-96 h-[660px]"
       } border ${themeClasses.border}`}
     >
       {/* Enhanced Header */}
