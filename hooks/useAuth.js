@@ -3,6 +3,11 @@ import { auth, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
+/**
+ * Provides authentication state and user profile information.
+ * Tracks Firebase authentication changes and exposes auth-related utilities.
+ * @returns {Object} Authentication state, user profile data, loading state, errors, and helper methods.
+ */
 export const useAuth = () => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -44,6 +49,10 @@ export const useAuth = () => {
     return unsubscribe;
   }, []);
 
+  /**
+   * Signs out the currently authenticated user and clears local auth state.
+   * @returns {Promise<void>} Resolves when the user is successfully signed out.
+  */
   const signOut = async () => {
     try {
       await auth.signOut();

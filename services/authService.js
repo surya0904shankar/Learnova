@@ -11,6 +11,13 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { createUserProfile, getErrorMessage } from "@/utils/authUtils";
 import { ROLE_CONFIG } from "@/constants/userRoles";
 
+/**
+ * Authenticates a user using email and password credentials.
+ * @param {string} email - The user's email address.
+ * @param {string} password - The user's password.
+ * @param {string} selectedRole - The role selected during login.
+ * @returns {Promise<Object>} Authentication result and user data.
+ */
 export const loginWithEmail = async (email, password, selectedRole) => {
   try {
     const userCredential = await signInWithEmailAndPassword(
@@ -65,6 +72,14 @@ export const loginWithEmail = async (email, password, selectedRole) => {
   }
 };
 
+/**
+ * Creates a new user account using email and password.
+ * @param {string} email - The user's email address.
+ * @param {string} password - The user's password.
+ * @param {string} selectedRole - The role selected during signup.
+ * @param {Object} additionalData - Additional profile information.
+ * @returns {Promise<Object>} Signup result and verification status.
+ */
 export const signupWithEmail = async (
   email,
   password,
@@ -100,6 +115,13 @@ export const signupWithEmail = async (
   }
 };
 
+/**
+ * Authenticates a user using Google Sign-In.
+ * @param {string} selectedRole - The role selected by the user.
+ * @param {boolean} isLogin - Indicates whether the action is login or signup.
+ * @param {Object} additionalData - Additional profile information.
+ * @returns {Promise<Object>} Authentication result and user data.
+ */
 export const loginWithGoogle = async (
   selectedRole,
   isLogin,
@@ -178,6 +200,11 @@ export const loginWithGoogle = async (
   }
 };
 
+/**
+ * Sends a password reset email to the user.
+ * @param {string} email - The user's email address.
+ * @returns {Promise<Object>} Result of the password reset request.
+ */
 export const resetPassword = async (email) => {
   try {
     await sendPasswordResetEmail(auth, email);

@@ -2,6 +2,11 @@ import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { USER_ROLES } from "@/constants/userRoles";
 
+/**
+ * Returns a user-friendly authentication error message.
+ * @param {string} errorCode - Firebase authentication error code.
+ * @returns {string|null} Human-readable error message or null if not found.
+ */
 export const getErrorMessage = (errorCode) => {
   switch (errorCode) {
     case "auth/user-not-found":
@@ -21,6 +26,13 @@ export const getErrorMessage = (errorCode) => {
   }
 };
 
+/**
+ * Creates and stores a user profile in Firestore.
+ * @param {Object} user - Firebase authenticated user object.
+ * @param {string} role - Role assigned to the user.
+ * @param {Object} additionalData - Additional profile information.
+ * @returns {Promise<Object>} The created user profile object.
+ */
 export const createUserProfile = async (user, role, additionalData = {}) => {
   const { fullName, instituteName } = additionalData;
 
@@ -49,6 +61,12 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
   return userProfile;
 };
 
+/**
+ * Validates authentication form input fields.
+ * @param {Object} formData - Form values entered by the user.
+ * @param {boolean} isLogin - Indicates whether validation is for login or signup.
+ * @returns {Object} Validation result containing status and error messages.
+ */
 export const validateForm = (formData, isLogin) => {
   const { selectedRole, email, password, fullName, instituteName } = formData;
   const errors = {};
@@ -86,6 +104,12 @@ export const validateForm = (formData, isLogin) => {
   };
 };
 
+/**
+ * Redirects the user to the appropriate dashboard based on role.
+ * @param {string} role - User role used for route navigation.
+ * @param {Object} router - Next.js router instance.
+ * @returns {void}
+ */
 export const redirectBasedOnRole = (role, router) => {
   try {
     switch (role) {
