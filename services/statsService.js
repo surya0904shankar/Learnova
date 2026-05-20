@@ -27,8 +27,12 @@ function getWeekdaysSinceYearStart() {
 }
 
 /**
- * Initializes a new user's statistics in Firestore.
+ * Initializes a new user's statistics document in Firestore with default zero values.
  * @param {string} userId - The unique ID of the user.
+ * @returns {Promise<void>} Resolves when the stats document has been written.
+ * @example
+ * await initializeUserStats('user_abc123');
+ * // Creates { 'Courses Enrolled': 0, 'Attendance Rate': '0%', ... } in Firestore
  */
 export const initializeUserStats = async (userId) => {
   if (!userId) return;
@@ -50,10 +54,15 @@ export const initializeUserStats = async (userId) => {
 };
 
 /**
- * Increments a specific statistic for a user.
+ * Increments a specific statistic field for a user in Firestore.
+ * Creates the stats document first if it does not yet exist.
  * @param {string} userId - The unique ID of the user.
- * @param {string} statField - The name of the stat (must match dashboard labels).
- * @param {number} value - The amount to increment (default is 1).
+ * @param {string} statField - The stat field name (must match dashboard labels, e.g. 'Courses Enrolled').
+ * @param {number} [value=1] - The amount to increment; can be negative to decrement.
+ * @returns {Promise<void>} Resolves when the stat has been updated.
+ * @example
+ * await updateUserStat('user_abc123', 'Courses Enrolled', 1);
+ * await updateUserStat('user_abc123', 'Study Hours', 2);
  */
 export const updateUserStat = async (userId, statField, value = 1) => {
   if (!userId) return;
@@ -76,8 +85,14 @@ export const updateUserStat = async (userId, statField, value = 1) => {
 };
 
 /**
- * Recomputes attendance rate from persisted attendance_records.
- * @param {string} userId - Firebase Auth user id.
+ * Recomputes and persists a user's attendance rate as a percentage
+ * based on their attendance_records relative to total weekdays since the start of the year.
+ * @param {string} userId - The Firebase Auth user ID.
+ * @returns {Promise<number|undefined>} The calculated attendance percentage (0–100), or undefined on early return.
+ * @throws {Error} If the Firestore update fails.
+ * @example
+ * const rate = await recalculateAttendanceRate('user_abc123');
+ * console.log(rate); // e.g. 87
  */
 export const recalculateAttendanceRate = async (userId) => {
   if (!userId || !db) {
