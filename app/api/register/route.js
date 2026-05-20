@@ -42,6 +42,14 @@ export async function POST(req) {
       return jsonError("Invalid email address", 400);
     }
 
+    if (file.size > MAX_FILE_SIZE) {
+      return jsonError("File size exceeds 5MB limit", 400);
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      return jsonError("Invalid file type. Only JPEG, PNG, and WebP images are allowed.", 400);
+    }
+
     // Get DB
     const db = await connectDb();
     const users = db.collection("users");
