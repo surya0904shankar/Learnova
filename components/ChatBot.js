@@ -385,7 +385,6 @@ const LearnovaChatbot = () => {
       }
 
       const result = await response.json();
-      // console.log("✅ Saved to MongoDB:", result);
     } catch (error) {
       console.error("❌ MongoDB Save Error:", error);
     }

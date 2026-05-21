@@ -46,7 +46,6 @@ export async function POST(request) {
     }
 
     // Usage logging with user ID for audit/quota tracking
-    console.log(`[nova-ai-quota-tracker] Paid Groq API request by User UID: ${decodedToken.uid} (${decodedToken.email}) at ${new Date().toISOString()}`);
 
     const { message, userMessage } = await request.json();
     const rawMessage = typeof message === "string" ? message : userMessage;
