@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 
-function getWeekdaysSinceYearStart() {
+export function getWeekdaysSinceYearStart() {
   const start = new Date(new Date().getFullYear(), 0, 1);
   const end = new Date();
   let weekdays = 0;

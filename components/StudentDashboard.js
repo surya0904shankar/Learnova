@@ -41,6 +41,7 @@ const AttendanceHeatmap = dynamic(
 );
 
 import { useAuth } from "@/hooks/useAuth";
+import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 
 const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -48,12 +49,6 @@ const StudentDashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState("pending");
   const [todayClasses, setTodayClasses] = useState([]);
-  const [attendanceStats, setAttendanceStats] = useState({
-    present: 85,
-    absent: 12,
-    late: 8,
-    percentage: 87.2,
-  });
 
   const [recentActivity, setRecentActivity] = useState([]);
   const [upcomingClass, setUpcomingClass] = useState(null);
@@ -239,6 +234,7 @@ const StudentDashboard = () => {
 
   return (
     <div>
+      {user && user.uid && <AttendanceAnalytics userId={user.uid} />}
       {/* KEEP YOUR ENTIRE EXISTING JSX HERE EXACTLY SAME */}
     </div>
   );
