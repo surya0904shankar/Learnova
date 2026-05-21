@@ -93,8 +93,9 @@ export async function POST(request) {
       return jsonError("Unauthorized", 401);
     }
 
-    // Rate limiting per authenticated user
-    if (await isRateLimited(decodedToken.uid)) {
+    // Rate limiting per authenticated user (persisted across cold starts)
+    const rateLimit = await checkRateLimit(decodedToken.uid);
+    if (!rateLimit.allowed) {
       return jsonError("Too many requests. Please try again later.", 429);
     }
 
