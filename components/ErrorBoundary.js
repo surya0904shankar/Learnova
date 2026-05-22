@@ -1,10 +1,11 @@
 "use client";
 import React from "react";
+import { AlertOctagon, RefreshCw, ChevronDown, ChevronUp, Terminal } from "lucide-react";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null, showDetails: false };
   }
 
   static getDerivedStateFromError(error) {
@@ -12,14 +13,18 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
+    // Error caught by boundary - handle silently in production
   }
 
   componentDidUpdate(prevProps) {
     if (prevProps.children !== this.props.children && this.state.hasError) {
-      this.setState({ hasError: false, error: null });
+      this.setState({ hasError: false, error: null, errorInfo: null, showDetails: false });
     }
   }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null, showDetails: false });
+  };
 
   render() {
     if (this.state.hasError) {

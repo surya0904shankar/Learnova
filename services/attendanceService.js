@@ -5,6 +5,7 @@ import {
   query,
   serverTimestamp,
   where,
+  limit,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebaseConfig";
@@ -21,22 +22,24 @@ function getTodayKey() {
  * @returns {Promise<boolean>} True if the user has checked in today, false otherwise.
  * @example
  * const alreadyIn = await hasCheckedInToday('user_abc123');
- * if (alreadyIn) console.log('Already checked in today');
+ * if (alreadyIn) return true;
  */
 export async function hasCheckedInToday(userId) {
   if (!userId || !db) {
     return false;
   }
-
-  const attendanceQuery = query(
-    collection(db, "attendance_records"),
-    where("userId", "==", userId)
-  );
-
-  const snapshot = await getDocs(attendanceQuery);
   const today = getTodayKey();
 
-  return snapshot.docs.some((docSnap) => docSnap.data().date === today);
+  const attendanceQuery = query(
+  collection(db, "attendance_records"),
+  where("userId", "==", userId),
+  where("date", "==", today),
+  limit(1)
+);
+
+const snapshot = await getDocs(attendanceQuery);
+
+return !snapshot.empty;
 }
 
 /**
@@ -82,7 +85,7 @@ export async function recordAttendance({
     confidenceScore: confidenceScore ?? 0,
   });
 
-  await recalculateAttendanceRate(userId);
+  const newRate = await recalculateAttendanceRate(userId);
 
-  return { alreadyRecorded: false };
+  return { alreadyRecorded: false, newRate };
 }

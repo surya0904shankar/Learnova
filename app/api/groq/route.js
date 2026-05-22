@@ -1,123 +1,106 @@
-import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { jsonSuccess } from "@/lib/api-response";
+import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_MESSAGE_LENGTH = 2000;
+const SYSTEM_PROMPT =
+  "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem. You help with questions about attendance automation, smart activities, security features, analytics, and educational technology. Always be helpful, informative, and encouraging. Keep responses concise but comprehensive.";
 
-// Rate limiting setup
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // max 10 requests per minute
-const rateLimitMap = new Map();
 
-const isRateLimited = (userId) => {
-  const now = Date.now();
-  if (!rateLimitMap.has(userId)) {
-    rateLimitMap.set(userId, [now]);
-    return false;
+/**
+ * Handles incoming chat completions requests using the Groq AI SDK.
+ * Secured via Firebase Bearer Token authentication to prevent API resource abuse,
+ * billing spikes, and unauthorized client consumption. Includes per-user rate limiting.
+ * 
+ * @param {Request} request - The incoming HTTP POST request.
+ * @returns {Promise<Response>} JSON response containing completion results or an error payload.
+ */
+export const POST = withErrorHandler(async (request) => {
+  const decodedToken = await authenticateRequest(request);
+
+
+  // Rate limiting per authenticated user (persisted across cold starts)
+  const rateLimit = await checkRateLimit(decodedToken.uid);
+  if (!rateLimit.allowed) {
+    throw new AppError("Too many requests. Please try again later.", 429);
   }
 
-  const timestamps = rateLimitMap.get(userId);
-  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
+  // Usage logging with user ID for audit/quota tracking
 
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(userId, validTimestamps);
-    return true;
+  const { message, userMessage } = await request.json();
+  const rawMessage = typeof message === "string" ? message : userMessage;
+  const trimmedMessage = rawMessage?.trim();
+
+  if (!trimmedMessage) {
+    throw new ValidationError("Message is required");
   }
 
-  validTimestamps.push(now);
-  rateLimitMap.set(userId, validTimestamps);
-  return false;
-};
+  if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
+    throw new ValidationError("Message is too long");
+  }
 
-export async function POST(request) {
+  const { isInjection, matchedPattern } = detectInjection(trimmedMessage);
+  if (isInjection) {
+    console.warn(`[nova-prompt-guard] Injection attempt detected from UID: ${decodedToken.uid}, pattern: ${matchedPattern}`);
+    throw new ValidationError("Your message contains content that violates usage policies. Please rephrase your question.");
+  }
+
+  const cleanMessage = sanitizeMessage(trimmedMessage);
+  if (!cleanMessage) {
+    throw new ValidationError("Message is required");
+  }
+
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new AppError("Groq API key is not configured", 500);
+  }
+
+  const timeoutMs = parseInt(process.env.GROQ_TIMEOUT || "30000", 10) || 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const messages = buildSecureMessages(cleanMessage, SYSTEM_PROMPT);
+
+  let response;
   try {
-    const authorization = request.headers.get("authorization");
-    const token = authorization?.split(" ")[1];
-
-    const decodedToken = await verifyFirebaseToken(token);
-
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
-    }
-
-    // Rate limiting per authenticated user
-    if (isRateLimited(decodedToken.uid)) {
-      return jsonError("Too many requests. Please try again later.", 429);
-    }
-
-    // Usage logging with user ID for audit/quota tracking
-    console.log(`[nova-ai-quota-tracker] Paid Groq API request by User UID: ${decodedToken.uid} (${decodedToken.email}) at ${new Date().toISOString()}`);
-
-    const { message, userMessage } = await request.json();
-    const rawMessage = typeof message === "string" ? message : userMessage;
-    const trimmedMessage = rawMessage?.trim();
-
-    if (!trimmedMessage) {
-      return jsonError("Message is required", 400);
-    }
-
-    if (trimmedMessage.length > MAX_MESSAGE_LENGTH) {
-      return jsonError("Message is too long", 400);
-    }
-
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return jsonError("Groq API key is not configured", 500);
-    }
-
-    const timeoutMs = parseInt(process.env.GROQ_TIMEOUT || "30000", 10) || 30000;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    let response;
-    try {
-      response = await fetch(GROQ_API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem. You help with questions about attendance automation, smart activities, security features, analytics, and educational technology. Always be helpful, informative, and encouraging. Keep responses concise but comprehensive.",
-            },
-            { role: "user", content: trimmedMessage },
-          ],
-          max_tokens: 400,
-          temperature: 0.7,
-        }),
-      });
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      return jsonError(
-        errorBody?.error?.message || "Groq request failed",
-        response.status,
-      );
-    }
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-
-    if (!content) {
-      return jsonError("Groq response was empty", 502);
-    }
-
-    return jsonSuccess({ message: content });
-  } catch (error) {
-    if (error.name === "AbortError") {
-      console.error("Groq API request timed out:", error);
-      return jsonError("Gateway Timeout: Groq did not respond in time.", 504);
-    }
-    console.error("Groq API route error:", error);
-    return jsonError("Internal server error", 500);
+    response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages,
+        max_tokens: 400,
+        temperature: 0.7,
+      }),
+    });
+  } finally {
+    clearTimeout(timeoutId);
   }
-}
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch((error) => {
+      console.error("Error:", error);
+      return { error: "Something went wrong" };
+    });
+    throw new AppError(
+      errorBody?.error?.message || "Groq request failed",
+      response.status,
+    );
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new AppError("Groq response was empty", 502);
+  }
+
+  return jsonSuccess({ message: content });
+});
