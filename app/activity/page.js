@@ -59,6 +59,12 @@ export default function ActivityPage() {
   const [selectedLevel, setSelectedLevel] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [stats, setStats] = useState({
+    games: 0,
+    students: 0,
+    rating: 0,
+  });
+
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     const handleMouseMove = (e) => {
@@ -72,6 +78,38 @@ export default function ActivityPage() {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("mousemove", handleMouseMove);
     };
+  }, []);
+
+  useEffect(() => {
+    const duration = 2000;
+    const frameRate = 30;
+    const totalFrames = duration / frameRate;
+
+    let frame = 0;
+
+    const counter = setInterval(() => {
+      frame++;
+
+      const progress = frame / totalFrames;
+
+      setStats({
+        games: Math.floor(250 * progress),
+        students: Math.floor(50000 * progress),
+        rating: (4.7 * progress).toFixed(1),
+      });
+
+      if (frame >= totalFrames) {
+        clearInterval(counter);
+
+        setStats({
+          games: 250,
+          students: 50000,
+          rating: "4.7",
+        });
+      }
+    }, frameRate);
+
+    return () => clearInterval(counter);
   }, []);
 
   const categories = [
@@ -247,6 +285,8 @@ export default function ActivityPage() {
       // Open activity page
       router.push(`/activity/${activity.id}`);
     } catch (error) {
+      console.error("Error starting activity:", error);
+
       // Still open page even if logging fails
       router.push(`/activity/${activity.id}`);
     }
@@ -343,9 +383,21 @@ export default function ActivityPage() {
             <Reveal delay={0.4}>
               <div className="flex flex-wrap justify-center gap-6">
                 {[
-                  { label: "Active Games", value: "250+", icon: Gamepad2 },
-                  { label: "Students Playing", value: "50K+", icon: Users },
-                  { label: "Avg Rating", value: "4.7", icon: Star },
+                  {
+                    label: "Active Games",
+                    value: `${stats.games}+`,
+                    icon: Gamepad2,
+                  },
+                  {
+                    label: "Students Playing",
+                    value: `${(stats.students / 1000).toFixed(0)}K+`,
+                    icon: Users,
+                  },
+                  {
+                    label: "Avg Rating",
+                    value: stats.rating,
+                    icon: Star,
+                  },
                 ].map((stat, index) => (
                   <div
                     key={index}
@@ -531,8 +583,8 @@ export default function ActivityPage() {
             <Reveal delay={0.1}>
               <div className="mb-12">
                 <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
-                    All Activities
-                  </h2>
+                  All Activities
+                </h2>
                 <p className="text-gray-400">
                   {filteredActivities.length} activities found
                   {selectedCategory !== "all" &&
