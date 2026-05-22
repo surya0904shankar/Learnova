@@ -113,9 +113,6 @@ export async function PATCH(request) {
       { upsert: true }
     );
 
-    console.log(
-      `[Audit Log] Settings updated successfully for target user: ${targetUserId} by operator: ${decodedToken.uid} (Role: ${isOperatorAdmin ? "admin" : "owner"})`
-    );
 
     return jsonSuccess({ message: "Settings saved successfully" }, 200);
   } catch (error) {

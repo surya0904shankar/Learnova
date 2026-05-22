@@ -92,7 +92,7 @@ export const updateUserStat = async (userId, statField, value = 1) => {
  * @throws {Error} If the Firestore update fails.
  * @example
  * const rate = await recalculateAttendanceRate('user_abc123');
- * console.log(rate); // e.g. 87
+ * // rate is e.g. 87
  */
 export const recalculateAttendanceRate = async (userId) => {
   if (!userId || !db) {
