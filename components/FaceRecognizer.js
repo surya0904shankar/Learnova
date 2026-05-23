@@ -19,6 +19,7 @@ export default function FaceRecognizer({ authUser }) {
   const retryStreamRef = useRef(null);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const isSubmittingRef = useRef(false);
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
   
@@ -49,6 +50,7 @@ export default function FaceRecognizer({ authUser }) {
   const labels = fetchedLabels;
 
   const handleRetry = async () => {
+    isSubmittingRef.current = false;
     try {
       if (retryStreamRef.current) {
         retryStreamRef.current.getTracks().forEach((t) => t.stop());
@@ -196,6 +198,7 @@ export default function FaceRecognizer({ authUser }) {
             }
             return null;
           } catch (err) {
+            isSubmittingRef.current = false;
             console.error("Face descriptor error:", err);
             return null;
           }
@@ -372,6 +375,9 @@ export default function FaceRecognizer({ authUser }) {
       if (!finished || !detectedPerson || !authUser?.uid || livenessState !== "AUTHENTICATED") {
         return;
       }
+      if (isSubmittingRef.current) {
+        return;
+      }
 
       if (confidence < MIN_CONFIDENCE_TO_RECORD) {
         setAttendanceState("low-confidence");
@@ -386,7 +392,7 @@ export default function FaceRecognizer({ authUser }) {
         setMessage("Face does not match signed-in account.");
         return;
       }
-
+      isSubmittingRef.current = true;
       setAttendanceState("saving");
 
       try {
