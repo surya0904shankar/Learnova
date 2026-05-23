@@ -44,7 +44,7 @@ export function Navbar() {
 
   const dropdownRef = useRef(null);
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [prefersDark, setPrefersDark] = useState(() => {
     if (typeof window === "undefined") return null;
@@ -226,13 +226,13 @@ export function Navbar() {
         style={{
           // Use resolved theme when mounted; otherwise fall back to system preference
           backgroundColor:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
               ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
               : `rgba(255,255,255,0.98)`,
           backdropFilter: `blur(20px)`,
           WebkitBackdropFilter: `blur(20px)`,
           borderBottom:
-            (mounted ? theme : prefersDark ? "dark" : "light") === "dark"
+            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
               ? `1px solid rgba(255,255,255,0.1)`
               : `1px solid rgba(0,0,0,0.08)`,
         }}
