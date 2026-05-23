@@ -3,6 +3,7 @@ import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/p
 import { checkRateLimit } from "@/lib/rateLimit";
 import { withErrorHandler, authenticateRequest } from "@/lib/error-handler";
 import { AppError, ValidationError } from "@/lib/errors";
+import logger from "@/utils/logger"; // Import the central Winston logger
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,6 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_MESSAGE_LENGTH = 2000;
 const SYSTEM_PROMPT =
   "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem. You help with questions about attendance automation, smart activities, security features, analytics, and educational technology. Always be helpful, informative, and encouraging. Keep responses concise but comprehensive.";
-
 
 /**
  * Handles incoming chat completions requests using the Groq AI SDK.
@@ -23,14 +23,11 @@ const SYSTEM_PROMPT =
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await authenticateRequest(request);
 
-
   // Rate limiting per authenticated user (persisted across cold starts)
   const rateLimit = await checkRateLimit(decodedToken.uid);
   if (!rateLimit.allowed) {
     throw new AppError("Too many requests. Please try again later.", 429);
   }
-
-  // Usage logging with user ID for audit/quota tracking
 
   const { message, userMessage } = await request.json();
   const rawMessage = typeof message === "string" ? message : userMessage;
@@ -46,7 +43,12 @@ export const POST = withErrorHandler(async (request) => {
 
   const { isInjection, matchedPattern } = detectInjection(trimmedMessage);
   if (isInjection) {
-    console.warn(`[nova-prompt-guard] Injection attempt detected from UID: ${decodedToken.uid}, pattern: ${matchedPattern}`);
+    // FIX: Replaced raw console.warn with centralized, structured logger
+    logger.warn({
+      message: "Prompt injection attempt blocked",
+      uid: decodedToken.uid,
+      pattern: matchedPattern,
+    });
     throw new ValidationError("Your message contains content that violates usage policies. Please rephrase your question.");
   }
 
@@ -87,13 +89,21 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   if (!response.ok) {
-    const errorBody = await response.json().catch((error) => {
-      console.error("Error:", error);
-      return { error: "Something went wrong" };
-    });
+    let errorBody;
+    try {
+      errorBody = await response.json();
+    } catch (parseError) {
+      // FIX: Removed empty catch logic that hid internal downstream parsing failures
+      logger.error({
+        message: "Failed to parse Groq error response JSON body",
+        error: parseError.message,
+      });
+      errorBody = null;
+    }
+
     throw new AppError(
-      errorBody?.error?.message || "Groq request failed",
-      response.status,
+      errorBody?.error?.message || `Groq downstream request failed with status ${response.status}`,
+      response.status
     );
   }
 
@@ -103,6 +113,12 @@ export const POST = withErrorHandler(async (request) => {
   if (!content) {
     throw new AppError("Groq response was empty", 502);
   }
+
+  // Optional: Structured info log for audit tracking tracking
+  logger.info({
+    message: "Groq completion generated successfully",
+    uid: decodedToken.uid,
+  });
 
   return jsonSuccess({ message: content });
 });
