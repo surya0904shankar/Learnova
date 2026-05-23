@@ -41,6 +41,15 @@ const AttendanceHeatmap = dynamic(
     loading: () => <ChartSkeleton variant="heatmap" />,
   }
 );
+
+const AttendanceCalendar = dynamic(
+  () => import("./AttendanceCalendar.jsx"),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton variant="heatmap" />,
+  }
+);
+
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
 import XpProgressBar from "./gamification/XpProgressBar";
@@ -57,6 +66,7 @@ const StudentDashboard = () => {
   const [upcomingClass, setUpcomingClass] = useState(null);
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
   const [gamificationData, setGamificationData] = useState(null);
+  const [viewMode, setViewMode] = useState("heatmap");
 
   useEffect(() => {
     const fetchGamification = async () => {
@@ -492,8 +502,39 @@ const StudentDashboard = () => {
               </div>
             </div>
 
-            {/* Heatmap */}
-            <AttendanceHeatmap recentActivity={recentActivity} />
+            {/* Heatmap / Calendar View */}
+            <div>
+              <div className="flex justify-end mb-4">
+                <div className="bg-black/40 backdrop-blur-md p-1 rounded-xl flex items-center border border-white/10 w-fit">
+                  <button
+                    onClick={() => setViewMode("heatmap")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === "heatmap"
+                        ? "bg-accent text-white shadow-lg"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Heatmap
+                  </button>
+                  <button
+                    onClick={() => setViewMode("calendar")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      viewMode === "calendar"
+                        ? "bg-accent text-white shadow-lg"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Calendar
+                  </button>
+                </div>
+              </div>
+
+              {viewMode === "heatmap" ? (
+                <AttendanceHeatmap recentActivity={recentActivity} />
+              ) : (
+                <AttendanceCalendar recentActivity={recentActivity} />
+              )}
+            </div>
           </div>
 
           {/* Right */}
