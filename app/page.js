@@ -149,21 +149,22 @@ const IMPACT_DATA = [
   },
 ];
 
-// Reusable components
+// ✅ UPDATED FIXED COMPONENT
 const SectionBadge = ({
   icon: Icon,
   text,
   gradient = "from-purple-500/20 to-pink-500/20",
-  borderColor = "purple-500/30",
+  borderClass = "border-purple-500/30", // 1. Pass the full class name string here
   textColor = "purple-300",
 }) => (
   <div
-    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border border-${borderColor} backdrop-blur-sm mb-6`}
+    className={`inline-flex items-center px-4 py-2 bg-gradient-to-r ${gradient} rounded-full border ${borderClass} backdrop-blur-sm mb-6`} // 2. Drop the template literal concatenation
   >
     <Icon className={`w-5 h-5 text-${textColor.split("-")[0]}-400 mr-2`} />
     <span className={`text-${textColor} font-medium`}>{text}</span>
   </div>
 );
+
 
 const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
   <motion.div
@@ -465,6 +466,7 @@ export default function AboutPage() {
                 borderColor="accent/30"
                 textColor="accent"
               />
+              
 
               <h2 className="text-4xl md:text-5xl font-bold text-black dark:text-white mb-6">
                 Core Principles That Drive Us
