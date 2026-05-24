@@ -242,6 +242,12 @@ export default function RootLayout({ children }) {
       <body
         className={`font-sans ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen transition-colors duration-300`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[9999] focus:p-4 focus:bg-blue-600 focus:text-white focus:font-bold focus:outline-none focus:ring-2"
+        >
+          Skip to Main Content
+        </a>
           {/* Cursor glow removed per UX preference */}
           
         <ThemeProvider>
@@ -259,7 +265,9 @@ export default function RootLayout({ children }) {
           <AuthProvider>
             <NotificationProvider>
               <Suspense fallback={null}>
-                <PageTransition>{children}</PageTransition>
+                <main id="main-content" className="outline-none" tabIndex="-1">
+                  <PageTransition>{children}</PageTransition>
+                </main>
 
                 <ScrollToTop />
 
