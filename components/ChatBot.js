@@ -251,7 +251,7 @@ const CodeBlock = ({ language, code }) => {
 // ---------------------------------------------------------------------------
 const markdownComponents = {
   p: ({ children }) => (
-    <p className="my-2 text-sm leading-relaxed text-gray-200 last:mb-0">{children}</p>
+    <p className="my-2 text-sm leading-relaxed text-black dark:text-white last:mb-0">{children}</p>
   ),
   strong: ({ children }) => (
     <strong className="font-semibold text-purple-400">{children}</strong>
@@ -325,7 +325,7 @@ const markdownComponents = {
 // ---------------------------------------------------------------------------
 // Bot response logic
 // ---------------------------------------------------------------------------
-async function generateBotResponse(userMessage, currentCategory, idToken) {
+async function generateBotResponse(userMessage, currentCategory, idToken, updatedMessages = []) {
   const lower = userMessage.toLowerCase();
 
   // Greetings
@@ -382,7 +382,13 @@ async function generateBotResponse(userMessage, currentCategory, idToken) {
     const response = await fetch("/api/groq", {
       method: "POST",
       headers,
-      body: JSON.stringify({ message: userMessage, category: currentCategory }),
+      body: JSON.stringify({ 
+        messages: updatedMessages.map(msg => ({
+          role: msg.isBot ? "assistant" : "user",
+          content: msg.text
+        })), 
+        category: currentCategory 
+      }),
     });
 
     if (response.ok) {
@@ -512,7 +518,7 @@ const LearnovaChatbot = () => {
           botText = "**Please sign in** to use the AI chatbot.";
         } else {
           const idToken = await user.getIdToken();
-          botText = await generateBotResponse(text, currentCategory, idToken);
+          botText = await generateBotResponse(text, currentCategory, idToken, [...messages, userMsg]);
         }
       } catch {
         botText = `I apologize for the technical difficulty. Our team is here to help:\n\n📧 **Email:** ${CONTACT_INFO.email}\n📞 **Phone:** ${CONTACT_INFO.phone}\n🎯 **Live Demo:** ${CONTACT_INFO.demo}`;

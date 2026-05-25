@@ -42,7 +42,7 @@ export const POST = withErrorHandler(async (request) => {
         timestamp: FieldValue.serverTimestamp(),
         date: normalizedDate,
         status: "present",
-        confidenceScore,
+        confidenceScore: confidenceScore / 100,
         offlineSynced: false,
       },
       { merge: true },
