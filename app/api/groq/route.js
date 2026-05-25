@@ -3,37 +3,15 @@ import {
   authenticateRequest,
   withErrorHandler,
 } from "@/lib/error-handler";
-import { ValidationError } from "@/lib/errors";
-import {
-  callGroq,
-  validateGroqBody,
-} from "@/lib/ai/groq";
+import { ValidationError, AppError } from "@/lib/errors";
+import { callGroq, validateGroqBody } from "@/lib/ai/groq";
 
 export const dynamic = "force-dynamic";
 
 import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
 
-const groqSchema = z.object({
-  message: z.string().optional(),
-  userMessage: z.string().optional(),
-}).refine(
-  (data) => {
-    const message = data.message || data.userMessage;
-    return message && message.trim().length > 0;
-  },
-  {
-    message: "Message is required",
-  }
-).refine(
-  (data) => {
-    const message = data.message || data.userMessage;
-    return message && message.trim().length <= 2000;
-  },
-  {
-    message: "Message too long",
-  }
-);
+// Use shared validators/helpers from `lib/ai/groq`
 
 export async function POST(request) {
   try {
@@ -49,20 +27,9 @@ export async function POST(request) {
       );
     }
 
-    // Parse body
+    // Parse and validate body using shared validator
     const body = await request.json();
-
-    const validation = groqSchema.safeParse(body);
-    if (!validation.success) {
-      const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
-      throw new ValidationError(firstError);
-    }
-
-    const rawMessage =
-      validation.data.message ||
-      validation.data.userMessage;
-
-    const trimmedMessage = rawMessage.trim();
+    const { trimmedMessage } = validateGroqBody(body);
 
     // Check for prompt injection
     const injectionCheck = detectInjection(trimmedMessage);
@@ -85,78 +52,10 @@ export async function POST(request) {
       );
     }
 
-    // Timeout setup
-    const timeoutMs = parseInt(
-      process.env.GROQ_TIMEOUT || "30000",
-      10
-    );
+    // Call shared Groq helper which handles request/timeout/errors
+    const content = await callGroq(sanitizedMessage);
 
-    const controller =
-      new AbortController();
-
-    const timeoutId = setTimeout(
-      () => controller.abort(),
-      timeoutMs
-    );
-
-    let response;
-
-    try {
-      response = await fetch(
-        GROQ_API_URL,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type":
-              "application/json",
-          },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
-            messages: buildSecureMessages(
-              sanitizedMessage,
-              "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem."
-            ),
-            max_tokens: 400,
-            temperature: 0.7,
-          }),
-        }
-      );
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    // Handle API errors
-    if (!response.ok) {
-      const errorData =
-        await response
-          .json()
-          .catch(() => ({}));
-
-      return jsonError(
-        errorData?.error?.message ||
-          "Groq API request failed",
-        response.status
-      );
-    }
-
-    // Parse response
-    const data = await response.json();
-
-    const content =
-      data?.choices?.[0]?.message
-        ?.content;
-
-    if (!content) {
-      return jsonError(
-        "AI generated an empty response",
-        502
-      );
-    }
-    return jsonSuccess({
-      message: content,
-    });
+    return jsonSuccess({ message: content });
   } catch (err) {
     return jsonError(err?.message || "Server error", 500);
   }
