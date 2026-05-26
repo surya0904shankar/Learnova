@@ -78,6 +78,7 @@ describe("attendance record route", () => {
         instituteId: "inst-999",
         date: "2026-05-25",
         status: "present",
+        confidenceScore: 0.75,
         offlineSynced: false,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
       }),
