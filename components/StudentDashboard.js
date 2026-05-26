@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 
@@ -9,15 +13,11 @@ import {
   Clock,
   MapPin,
   Camera,
-  CheckCircle,
   Shield,
-  Smartphone,
   TrendingUp,
   Target,
   Award,
   RefreshCw,
-  Download,
-  Star,
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
@@ -87,7 +87,12 @@ const StudentDashboard = () => {
         const mapped = activities.map(a => ({
          subject: a.title,
           date: a.timestamp?.toLocaleDateString() || "",
-          status: a.progress >= 100 ? "present" : "late",
+          status:
+            a.progress >= 100
+              ? "present"
+              : a.progress > 0
+                ? "late"
+                : "absent",
           }));
 setRecentActivity(mapped);
       } catch (err) {
@@ -197,8 +202,6 @@ setRecentActivity(mapped);
       try {
         const now = new Date();
 
-        setCurrentTime(now);
-
         const hour = now.getHours();
         const minute = now.getMinutes();
         const day = now.getDay();
@@ -267,32 +270,15 @@ setRecentActivity(mapped);
 
     updateDashboard();
 
-    const timer = setInterval(
-      updateDashboard,
-      1000
-    );
+    const clockTimer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
 
     return () => {
-      clearInterval(timer);
+      clearInterval(clockTimer);
       clearTimeout(loadingTimer);
     };
   }, []);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "present":
-        return "text-green-400 bg-green-500/10 border-green-500/30";
-
-      case "absent":
-        return "text-red-400 bg-red-500/10 border-red-500/30";
-
-      case "late":
-        return "text-yellow-400 bg-yellow-500/10 border-yellow-500/30";
-
-      default:
-        return "text-gray-400 bg-gray-500/10 border-gray-500/30";
-    }
-  };
 
   const getUserInitials = () => {
     if (!user?.displayName && !user?.email) {
@@ -595,43 +581,4 @@ const StatCard = ({
   );
 };
 
-const QuickStat = ({
-  icon,
-  label,
-  value,
-}) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center space-x-2">
-      {icon}
-
-      <span className="text-gray-300 text-sm">
-        {label}
-      </span>
-    </div>
-
-    <span className="text-white font-semibold">
-      {value}
-    </span>
-  </div>
-);
-
-const SecurityItem = ({
-  label,
-  status,
-}) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center space-x-2">
-      <CheckCircle className="w-4 h-4 text-green-400" />
-
-      <span className="text-gray-300 text-sm">
-        {label}
-      </span>
-    </div>
-
-    <span className="text-green-400 text-sm">
-      {status}
-    </span>
-  </div>
-);
-
-export default StudentDashboard;
+export default React.memo(StudentDashboard);

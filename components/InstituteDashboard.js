@@ -2,16 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Users,
-  Calendar,
   Clock,
-  MapPin,
-  TrendingUp,
   Settings,
   Bell,
   Download,
   Plus,
   Search,
-  Filter,
   Eye,
   Edit,
   Trash2,
@@ -22,24 +18,15 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Shield,
   Activity,
-  BarChart3,
-  PieChart,
-  Upload,
-  RefreshCw,
-  Copy,
-  Check,
   X,
   Zap,
-  Key,
-  Sparkles,
   Building,
   Mail,
   Phone,
   Globe,
-  Calendar as CalendarIcon,
   User,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ExportDropdown from "@/components/ui/ExportDropdown";
@@ -55,9 +42,7 @@ const AttendanceTrendsChart = dynamic(
 );
 
 const InstituteDashboard = () => {
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
-  const [selectedClass, setSelectedClass] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(
@@ -127,7 +112,7 @@ const InstituteDashboard = () => {
 
   // Keep institute and currentUser as static placeholders
   // Mock institute data
-  const [institute] = useState({
+  const institute = {
     name: "Learnova Institute of Technology",
     code: "LIT001",
     email: "admin@learnova.edu",
@@ -136,43 +121,57 @@ const InstituteDashboard = () => {
     established: "2010",
     website: "www.learnova.edu",
     accreditation: "NAAC A++",
-  });
+  };
 
-  // Mock user data
-  const [currentUser] = useState({
+  const currentUser = {
     name: "Dr. Admin",
     role: "Institute Administrator",
     avatar:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
-  });
+  };
 
   // Fetch institute stats from API
   useEffect(() => {
-    if (!user) return;
+    let mounted = true;
+
     const fetchStats = async () => {
       try {
+        if (!user) return;
         const token = await user.getIdToken();
         const res = await fetch("/api/institute/stats", {
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        if (!mounted) return;
+
         if (res.ok) {
           const data = await res.json();
+
           if (data.dashboardData) setDashboardData(data.dashboardData);
           if (data.classes) setClasses(data.classes);
           if (data.teachers) setTeachers(data.teachers);
-          if (data.attendanceRequests) setAttendanceRequests(data.attendanceRequests);
+          if (data.attendanceRequests)
+            setAttendanceRequests(data.attendanceRequests);
         } else {
           setError("Failed to fetch institute data. Please try again.");
         }
       } catch (err) {
-        setError("Network error. Please check your connection and try again.");
-        console.error("Error fetching institute stats:", err);
+        if (mounted) {
+          setError("Network error. Please check your connection and try again.");
+        }
+        console.error(err);
       } finally {
-        setLoading(false);
-        setInitialLoading(false);
+        if (mounted) {
+          setInitialLoading(false);
+        }
       }
     };
-    fetchStats();
+
+    if (user) fetchStats();
+
+    return () => {
+      mounted = false;
+    };
   }, [user]);
 
   // Clock interval only
@@ -226,30 +225,47 @@ const InstituteDashboard = () => {
     color = "blue",
   }) => {
     const colorClasses = {
-      blue: "from-blue-500/20 to-blue-600/20 border-blue-500/30 text-blue-400",
-      green:
-        "from-green-500/20 to-green-600/20 border-green-500/30 text-green-400",
-      red: "from-red-500/20 to-red-600/20 border-red-500/30 text-red-400",
-      yellow:
-        "from-yellow-500/20 to-yellow-600/20 border-yellow-500/30 text-yellow-400",
-      purple:
-        "from-purple-500/20 to-purple-600/20 border-purple-500/30 text-purple-400",
+      blue: {
+        gradient: "from-blue-500/20 to-blue-600/20",
+        border: "border-blue-500/30",
+        text: "text-blue-400",
+      },
+      green: {
+        gradient: "from-green-500/20 to-green-600/20",
+        border: "border-green-500/30",
+        text: "text-green-400",
+      },
+      red: {
+        gradient: "from-red-500/20 to-red-600/20",
+        border: "border-red-500/30",
+        text: "text-red-400",
+      },
+      yellow: {
+        gradient: "from-yellow-500/20 to-yellow-600/20",
+        border: "border-yellow-500/30",
+        text: "text-yellow-400",
+      },
+      purple: {
+        gradient: "from-purple-500/20 to-purple-600/20",
+        border: "border-purple-500/30",
+        text: "text-purple-400",
+      },
     };
+
+    const currentColor = colorClasses[color] || colorClasses.blue;
 
     return (
       <div
-        className={`bg-gradient-to-br ${colorClasses[color]} backdrop-blur-xl rounded-2xl border p-6 shadow-2xl hover:scale-105 transition-all duration-300`}
+        className={`bg-gradient-to-br ${currentColor.gradient} ${currentColor.border} backdrop-blur-xl rounded-2xl border p-6 shadow-2xl hover:scale-105 transition-all duration-300`}
       >
         <div className="flex items-center justify-between">
           <div>
             <p className="text-gray-300 text-sm font-medium">{title}</p>
-            <p
-              className={`text-2xl font-bold mt-1 ${
-                colorClasses[color].split(" ")[6]
-              }`}
-            >
+
+            <p className={`text-2xl font-bold mt-1 ${currentColor.text}`}>
               {value}
             </p>
+
             {subtitle && (
               <p
                 className={`text-sm mt-1 ${
@@ -262,12 +278,11 @@ const InstituteDashboard = () => {
               </p>
             )}
           </div>
+
           <div
-            className={`p-3 rounded-xl ${colorClasses[color].split(" ")[0]} ${
-              colorClasses[color].split(" ")[1]
-            }`}
+            className={`p-3 rounded-xl bg-gradient-to-br ${currentColor.gradient}`}
           >
-            <Icon className={`w-6 h-6 ${colorClasses[color].split(" ")[6]}`} />
+            <Icon className={`w-6 h-6 ${currentColor.text}`} />
           </div>
         </div>
       </div>
@@ -415,7 +430,7 @@ const InstituteDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => setShowAddModal(true)}
-            className="group bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-102"
+            className="group bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-105"
           >
             <div className="flex items-center space-x-3">
               <Plus className="w-5 h-5 text-purple-400 group-hover:text-purple-300" />
@@ -431,7 +446,7 @@ const InstituteDashboard = () => {
           <ExportDropdown
             onExport={handleExport}
             isExporting={isExporting}
-            className="group w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-102 flex justify-start items-center"
+            className="group w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-105 flex justify-start items-center"
           >
             <div className="flex items-center space-x-3 text-left">
               <Download className="w-5 h-5 text-green-400 group-hover:text-green-300" />
@@ -444,7 +459,7 @@ const InstituteDashboard = () => {
 
           <button
             onClick={() => setActiveTab("settings")}
-            className="group bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-102"
+            className="group bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 rounded-xl p-4 transition-all duration-500 ease-in-out hover:scale-105"
           >
             <div className="flex items-center space-x-3">
               <Settings className="w-5 h-5 text-orange-400 group-hover:text-orange-300" />
@@ -586,7 +601,7 @@ const InstituteDashboard = () => {
             <button
               onClick={() => setShowAddModal(true)}
               disabled={isLoading}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-500 ease-in-out hover:scale-102 flex items-center shadow-xl"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl transition-all duration-500 ease-in-out hover:scale-105 flex items-center shadow-xl"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Class
@@ -599,7 +614,7 @@ const InstituteDashboard = () => {
           {filteredClasses.map((classItem) => (
             <div
               key={classItem.id}
-              className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl hover:scale-102 transition-all duration-500 ease-in-out"
+              className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl hover:scale-105 transition-all duration-500 ease-in-out"
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
@@ -995,7 +1010,7 @@ const InstituteDashboard = () => {
           <div className="mt-6">
             <button
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-4 rounded-xl transition-all duration-300 hover:scale-102"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-4 rounded-xl transition-all duration-300 hover:scale-105"
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </button>

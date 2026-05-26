@@ -1,5 +1,10 @@
 import { toast } from "react-hot-toast";
-import React, { useState, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
@@ -169,6 +174,11 @@ const TeacherDashboard = () => {
   const [allRequests, setAllRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
+  const pendingRequests = useMemo(() => {
+  return attendanceRequests.filter(
+    (req) => req.status === "pending"
+  );
+}, [attendanceRequests]);
 
   // Dynamic teacher data
   const [teacher, setTeacher] = useState({
@@ -494,31 +504,7 @@ const TeacherDashboard = () => {
     }, 1500);
 
     const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now);
-
-      // Check if it's attendance window (9:00-9:10 AM on weekdays)
-      const hour = now.getHours();
-      const minute = now.getMinutes();
-      const day = now.getDay();
-
-      const isWeekday = day >= 1 && day <= 5;
-      const isAttendanceTime = hour === 9 && minute <= 10;
-
-      setAttendanceWindow(isWeekday && isAttendanceTime);
-
-      // Get today's classes
-      const dayNames = [
-        "Sunday",
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday",
-      ];
-      const today = dayNames[day];
-      setTodayClasses(weeklySchedule[today] || []);
+      setCurrentTime(new Date());
     }, 1000);
 
     return () => {
@@ -526,6 +512,38 @@ const TeacherDashboard = () => {
       clearTimeout(loadingTimer);
     };
   }, []);
+
+  useEffect(() => {
+    const now = new Date();
+
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const day = now.getDay();
+
+    const isWeekday = day >= 1 && day <= 5;
+    const isAttendanceTime =
+      hour === 9 && minute <= 10;
+
+    setAttendanceWindow(
+      isWeekday && isAttendanceTime
+    );
+
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    const today = dayNames[day];
+
+    setTodayClasses(
+      weeklySchedule[today] || []
+    );
+  }, [weeklySchedule]);
 
   const generatePasscode = async () => {
     setPasscodeLoading(true);
@@ -598,6 +616,44 @@ const TeacherDashboard = () => {
     toast.success("Passcode copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
+  const handleExportCSV = () => {
+    if (!studentAttendanceData || studentAttendanceData.length === 0) {
+      toast.error("No attendance records found to export.");
+      return;
+    }
+
+  const headers = ["Student ID", "Student Name", "Date", "Attendance Status"];
+  const todayDate = new Date().toISOString().slice(0, 10);
+
+  const csvRows = studentAttendanceData.map((student) => {
+    const studentId = student.rollNo || student.id || "N/A";
+    const studentName = student.name || "Unknown";
+    const status = student.status || "absent";
+    
+    return [
+      `"${studentId}"`,
+      `"${studentName.replace(/"/g, '""')}"`, 
+      `"${todayDate}"`,
+      `"${status.toUpperCase()}"`
+    ].join(",");
+  });
+
+  const csvContent = [headers.join(","), ...csvRows].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const fileName = `attendance_report_${todayDate}.csv`;
+
+  const link = document.createElement("a");
+  if (link.download !== undefined) {
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported data successfully to ${fileName}`);
+  }
+};
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -918,16 +974,17 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button className="w-full bg-gradient-to-r from-blue-600/20 to-cyan-600/20 hover:from-blue-600/30 hover:to-cyan-600/30 border border-blue-500/30 text-white p-3 rounded-xl transition-colors text-left">
+              <button 
+                onClick={handleExportCSV}
+                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-white p-3 rounded-xl transition-colors text-left"
+              >
                 <div className="flex items-center space-x-3">
-                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                  <Download className="w-5 h-5 text-purple-400" />
                   <div>
-                    <div className="font-medium">View Analytics</div>
-                    <div className="text-sm text-gray-400">
-                      Detailed insights
-                    </div>
-                  </div>
-                </div>
+                    <div className="font-medium">Export Reports</div>
+                    <div className="text-sm text-gray-400">CSV format (Instant Download)</div>
+                 </div>
+               </div>
               </button>
             </div>
           </div>
@@ -1167,7 +1224,10 @@ const TeacherDashboard = () => {
                     Generate Passcode
                   </button>
                 )}
-                <button className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2">
+                <button 
+                  onClick={handleExportCSV}
+                  className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
+                >
                   <Download className="w-3 h-3" />
                   Export Data
                 </button>
@@ -1233,4 +1293,4 @@ const TeacherDashboard = () => {
     </div>
   );
 };
-export default TeacherDashboard;
+export default React.memo(TeacherDashboard);
