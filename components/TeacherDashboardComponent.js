@@ -351,10 +351,10 @@ const TeacherDashboard = () => {
 
   // Fetch exception requests
   useEffect(() => {
-    const fetchExceptionRequests = async () => {
+    const fetchExceptionRequests = async (isBackground = false) => {
       if (!user) return;
 
-      setIsLoadingRequests(true);
+      if (!isBackground) setIsLoadingRequests(true);
       setRequestsError(null);
 
       try {
@@ -392,14 +392,14 @@ const TeacherDashboard = () => {
       } catch (error) {
         setRequestsError(error.message);
       } finally {
-        setIsLoadingRequests(false);
+        if (!isBackground) setIsLoadingRequests(false);
       }
     };
 
     fetchExceptionRequests();
 
     // Poll for updates every 30 seconds
-    const interval = setInterval(fetchExceptionRequests, 30000);
+    const interval = setInterval(() => fetchExceptionRequests(true), 30000);
     return () => clearInterval(interval);
   }, [user]);
 
